@@ -115,7 +115,13 @@ for (files = 0; files < fileList.length; files++) {
 	run("Morphological Filters (3D)", "operation=Erosion element=Ball x-radius=10 y-radius=10 z-radius=10");
 	rename("temp-erode");
 	
-	run("Keep Largest Region");
+	//To avoid the absence of an organoid to give an error
+	run("Analyze Regions 3D", "voxel_count surface_area_method=[Crofton (13 dirs.)] euler_connectivity=6");
+	table_rows = Table.size;	
+	if (table_rows != 0) {
+		run("Keep Largest Region");
+	}
+	
 	rename("temp-erode-filter");
 	run("Morphological Filters (3D)", "operation=Dilation element=Ball x-radius=6 y-radius=6 z-radius=6");
 	
@@ -165,35 +171,49 @@ for (files = 0; files < fileList.length; files++) {
 		label_cysts_array = newArray();
 		volume_cysts_array = newArray();
 		
-		//Calculate organoid volume
-		selectWindow("organoid_filled");
-		run("Analyze Regions 3D", "volume surface_area_method=[Crofton (13 dirs.)] euler_connectivity=6");
-		volume_organoid = getResult("Volume", 0);
-
-		//Calculate the cyst volume and store it in an array		
-		selectWindow("cysts_final");
-		run("Analyze Regions 3D", "volume surface_area_method=[Crofton (13 dirs.)] euler_connectivity=6");
-		Table.rename("cysts_final-morpho", "Results");
+		//Starting variables
+		volume_organoid = 0;
 		
-		if (nResults > 0) {
-			selectWindow("Results");
-			label_cysts_array = Table.getColumn("Label");
-			volume_cysts_array = Table.getColumn("Volume");
-			for (label = 0; label < label_cysts_array.length; label++) {
-				filename_array[label] = name;
-				volume_organoid_array[label] = volume_organoid;
-				cystnb_array[label] = label_cysts_array.length;
+		//Starting arrays with values
+		filename_array[0] = name;
+		volume_organoid_array[0] = volume_organoid;
+		cystnb_array[0] = 0;
+		label_cysts_array[0] = 0;
+		volume_cysts_array[0] = 0;
+		
+		
+		if (table_rows != 0) {
+			//Calculate organoid volume
+			selectWindow("organoid_filled");
+			run("Analyze Regions 3D", "volume surface_area_method=[Crofton (13 dirs.)] euler_connectivity=6");
+			volume_organoid = getResult("Volume", 0);
+	
+			//Calculate the cyst volume and store it in an array		
+			selectWindow("cysts_final");
+			run("Analyze Regions 3D", "volume surface_area_method=[Crofton (13 dirs.)] euler_connectivity=6");
+			Table.rename("cysts_final-morpho", "Results");
+			
+			if (nResults > 0) {
+				selectWindow("Results");
+				label_cysts_array = Table.getColumn("Label");
+				volume_cysts_array = Table.getColumn("Volume");
+				for (label = 0; label < label_cysts_array.length; label++) {
+					filename_array[label] = name;
+					volume_organoid_array[label] = volume_organoid;
+					cystnb_array[label] = label_cysts_array.length;
+				}
 			}
+			/*
+			else {
+				filename_array[0] = name;
+				volume_organoid_array[0] = volume_organoid;
+				cystnb_array[0] = 0;
+				label_cysts_array[0] = 0;
+				volume_cysts_array[0] = 0;
+			}
+			*/
 		}
-		else {
-			
-			filename_array[0] = name;
-			volume_organoid_array[0] = volume_organoid;
-			cystnb_array[0] = 0;
-			label_cysts_array[0] = 0;
-			volume_cysts_array[0] = 0;
-			
-		}
+		
 		
 		//Concatenate the arrays into the full column content
 		filename_column = Array.concat(filename_column,filename_array);
